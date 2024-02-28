@@ -216,7 +216,7 @@ class ItemConfigure {
         		<span class="mr-2">
             		<i class="fas fa-eye"></i>
         		</span>
-        		${__("View Variants123")}
+        		${__("View Variant")}
     		</button>
 		` : '';
 
