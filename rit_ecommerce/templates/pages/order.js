@@ -67,14 +67,22 @@ frappe.ready(() => {
 		});
 	}
 })
+
 const partial_amount_field = document.getElementById('partial');
 const pay_partial_button = document.getElementById('pay-partial-amount');
 const pay_for_order_button = document.getElementById('pay-for-order');
+
 pay_partial_button.addEventListener('click', function() {
-    const partial_amount = partial_amount_field.value;
-    if (partial_amount_field.style.display === 'block') {
+    const partial_amount = parseFloat(partial_amount_field.value); // Parse the partial amount as a float
+	const payment_amount_text = pay_for_order_button.innerText.trim(); // Get inner text and trim any leading/trailing whitespace
+	const payment_amount = parseFloat(payment_amount_text.replace(/[^0-9.]/g, '')); // Extract numerical value from text
+	if (partial_amount_field.style.display === 'block') {
+        if (partial_amount > payment_amount) {
+            alert("Error: Partial amount cannot exceed the total amount.");
+            return;
+        }
         window.location.href = '/api/method/rit_ecommerce.custom.make_partial_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&order_type=Shopping Cart&partial_amount=' + encodeURIComponent(partial_amount);
     }
     partial_amount_field.style.display = partial_amount_field.style.display === 'none' ? 'block' : 'none';
-	pay_for_order_button.style.display = 'none';
+    pay_for_order_button.style.display = 'none';
 });
