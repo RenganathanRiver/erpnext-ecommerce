@@ -73,9 +73,9 @@ const pay_partial_button = document.getElementById('pay-partial-amount');
 const pay_for_order_button = document.getElementById('pay-for-order');
 
 pay_partial_button.addEventListener('click', function() {
-    const partial_amount = parseFloat(partial_amount_field.value); // Parse the partial amount as a float
-	const payment_amount_text = pay_for_order_button.innerText.trim(); // Get inner text and trim any leading/trailing whitespace
-	const payment_amount = parseFloat(payment_amount_text.replace(/[^0-9.]/g, '')); // Extract numerical value from text
+    const partial_amount = parseFloat(partial_amount_field.value);
+	const payment_amount_text = pay_for_order_button.innerText.trim();
+	const payment_amount = parseFloat(payment_amount_text.replace(/[^0-9.]/g, ''));
 	if (partial_amount_field.style.display === 'block') {
         if (partial_amount > payment_amount) {
             alert("Error: Partial amount cannot exceed the total amount.");

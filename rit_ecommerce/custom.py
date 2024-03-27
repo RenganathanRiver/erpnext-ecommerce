@@ -21,13 +21,16 @@ def get_variant_url(item_code):
 @frappe.whitelist(allow_guest=True)
 def make_payment_request(**args):
 	"""Make payment request"""
-
+	frappe.log_error(title="Argument type",message=type(args))
 	args = frappe._dict(args)
-
+	frappe.log_error(title="Arguments",message=args)
 	ref_doc = frappe.get_doc(args.dt, args.dn)
+	frappe.log_error(title="Reference doc",message=ref_doc)
 	gateway_account = get_gateway_details(args) or frappe._dict()
-
+	frappe.log_error(title="Gateway account",message=gateway_account)
 	grand_total = get_amount(ref_doc, gateway_account.get("payment_account"))
+	frappe.log_error(title="Grand total",message=grand_total)
+	frappe.log_error(title="Loyalty points",message=args.loyalty_points)
 	if args.loyalty_points and args.dt == "Sales Order":
 		from erpnext.accounts.doctype.loyalty_program.loyalty_program import validate_loyalty_points
 
@@ -45,7 +48,7 @@ def make_payment_request(**args):
 		if args.get("party_type")
 		else ""
 	)
-
+	frappe.log_error(title="bank_account",message=bank_account)
 	draft_payment_request = frappe.db.get_value(
 		"Payment Request",
 		{"reference_doctype": args.dt, "reference_name": args.dn, "docstatus": 0},
@@ -121,7 +124,7 @@ def make_partial_payment_request(partial_amount, **args):
     ref_doc = frappe.get_doc(args.dt, args.dn)
     gateway_account = get_gateway_details(args) or frappe._dict()
 
-    grand_total = partial_amount
+    grand_total = float(partial_amount)
 
     bank_account = (
         get_party_bank_account(args.get("party_type"), args.get("party"))
