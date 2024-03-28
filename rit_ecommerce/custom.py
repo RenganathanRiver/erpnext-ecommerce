@@ -5,32 +5,32 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 )
 from frappe import _
 from frappe.utils import flt, nowdate
+from erpnext.accounts.doctype.payment_request.payment_request import get_gateway_details
+
+
 @frappe.whitelist()
 def get_variant_url(item_code):
-    try:
-        route = frappe.get_value("Website Item", {"item_code": item_code}, "route")
-        if route:
-            return frappe.utils.get_url(route)
-    except frappe.DoesNotExistError:
-        frappe.throw(f"Item not created")
+	try:
+		route = frappe.get_value("Website Item", {"item_code": item_code}, "route")
+		if route:
+			return frappe.utils.get_url(route)
+	except frappe.DoesNotExistError:
+		frappe.throw(f"Item not created")
 
-    except Exception as e:
-        frappe.throw(f"Error fetching variant URL: {e}")
-    return None
+	except Exception as e:
+		frappe.throw(f"Error fetching variant URL: {e}")
+	return None
 
 @frappe.whitelist(allow_guest=True)
 def make_payment_request(**args):
 	"""Make payment request"""
-	frappe.log_error(title="Argument type",message=type(args))
+
 	args = frappe._dict(args)
-	frappe.log_error(title="Arguments",message=args)
+
 	ref_doc = frappe.get_doc(args.dt, args.dn)
-	frappe.log_error(title="Reference doc",message=ref_doc)
 	gateway_account = get_gateway_details(args) or frappe._dict()
-	frappe.log_error(title="Gateway account",message=gateway_account)
+
 	grand_total = get_amount(ref_doc, gateway_account.get("payment_account"))
-	frappe.log_error(title="Grand total",message=grand_total)
-	frappe.log_error(title="Loyalty points",message=args.loyalty_points)
 	if args.loyalty_points and args.dt == "Sales Order":
 		from erpnext.accounts.doctype.loyalty_program.loyalty_program import validate_loyalty_points
 
@@ -48,7 +48,7 @@ def make_payment_request(**args):
 		if args.get("party_type")
 		else ""
 	)
-	frappe.log_error(title="bank_account",message=bank_account)
+
 	draft_payment_request = frappe.db.get_value(
 		"Payment Request",
 		{"reference_doctype": args.dt, "reference_name": args.dn, "docstatus": 0},
@@ -115,107 +115,73 @@ def make_payment_request(**args):
 
 	return pr.as_dict()
 
+
 @frappe.whitelist(allow_guest=True)
-def make_partial_payment_request(partial_amount, **args):
-    """Make partial payment request"""
+def make_partial_payment_request(**args):
+	"""Make Partial payment request"""
 
-    args = frappe._dict(args)
+	args = frappe._dict(args)
 
-    ref_doc = frappe.get_doc(args.dt, args.dn)
-    gateway_account = get_gateway_details(args) or frappe._dict()
+	ref_doc = frappe.get_doc(args.dt, args.dn)
+	gateway_account = get_gateway_details(args) or frappe._dict()
 
-    grand_total = float(partial_amount)
+	grand_total = get_amount(ref_doc, gateway_account.get("payment_account"))
 
-    bank_account = (
-        get_party_bank_account(args.get("party_type"), args.get("party"))
-        if args.get("party_type")
-        else ""
-    )
+	bank_account = (
+		get_party_bank_account(args.get("party_type"), args.get("party"))
+		if args.get("party_type")
+		else ""
+	)
 
-    draft_payment_request = frappe.db.get_value(
-        "Payment Request",
-        {"reference_doctype": args.dt, "reference_name": args.dn, "docstatus": 0},
-    )
+	grand_total = float(args.get("partial_amount"))
 
-    existing_payment_request_amount = get_existing_payment_request_amount(
-        args.dt, args.dn
-    )
+	pr = frappe.new_doc("Payment Request")
+	pr.update(
+		{
+			"payment_gateway_account": gateway_account.get("name"),
+			"payment_gateway": gateway_account.get("payment_gateway"),
+			"payment_account": gateway_account.get("payment_account"),
+			"payment_channel": gateway_account.get("payment_channel"),
+			"payment_request_type": args.get("payment_request_type"),
+			"currency": ref_doc.currency,
+			"grand_total": grand_total,
+			"mode_of_payment": args.mode_of_payment,
+			"email_to": args.recipient_id or ref_doc.owner,
+			"subject": _("Payment Request for {0}").format(args.dn),
+			"message": gateway_account.get("message") or get_dummy_message(ref_doc),
+			"reference_doctype": args.dt,
+			"reference_name": args.dn,
+			"party_type": args.get("party_type") or "Customer",
+			"party": args.get("party") or ref_doc.get("customer"),
+			"bank_account": bank_account,
+		}
+	)
 
-    if existing_payment_request_amount:
-        grand_total -= existing_payment_request_amount
+	# Update dimensions
+	pr.update(
+		{
+			"cost_center": ref_doc.get("cost_center"),
+			"project": ref_doc.get("project"),
+		}
+	)
 
-    if draft_payment_request:
-        frappe.db.set_value(
-            "Payment Request",
-            draft_payment_request,
-            "grand_total",
-            grand_total,
-            update_modified=False,
-        )
-        pr = frappe.get_doc("Payment Request", draft_payment_request)
-    else:
-        pr = frappe.new_doc("Payment Request")
-        pr.update(
-            {
-                "payment_gateway_account": gateway_account.get("name"),
-                "payment_gateway": gateway_account.get("payment_gateway"),
-                "payment_account": gateway_account.get("payment_account"),
-                "payment_channel": gateway_account.get("payment_channel"),
-                "payment_request_type": args.get("payment_request_type"),
-                "currency": ref_doc.currency,
-                "grand_total": grand_total,
-                "mode_of_payment": args.mode_of_payment,
-                "email_to": args.recipient_id or ref_doc.owner,
-                "subject": _("Payment Request for {0}").format(args.dn),
-                "message": gateway_account.get("message") or get_dummy_message(ref_doc),
-                "reference_doctype": args.dt,
-                "reference_name": args.dn,
-                "party_type": args.get("party_type") or "Customer",
-                "party": args.get("party") or ref_doc.get("customer"),
-                "bank_account": bank_account,
-            }
-        )
+	for dimension in get_accounting_dimensions():
+		pr.update({dimension: ref_doc.get(dimension)})
 
-        # Update dimensions
-        pr.update(
-            {
-                "cost_center": ref_doc.get("cost_center"),
-                "project": ref_doc.get("project"),
-            }
-        )
+	pr.flags.mute_email = True
 
-        for dimension in get_accounting_dimensions():
-            pr.update({dimension: ref_doc.get(dimension)})
+	pr.insert(ignore_permissions=True)
+	if args.submit_doc:
+		pr.submit()
 
-        if args.order_type == "Shopping Cart" or args.mute_email:
-            pr.flags.mute_email = True
+	frappe.db.commit()
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = pr.get_payment_url()
 
-        pr.insert(ignore_permissions=True)
-        if args.submit_doc:
-            pr.submit()
+	if args.return_doc:
+		return pr
 
-    if args.order_type == "Shopping Cart":
-        frappe.db.commit()
-        frappe.local.response["type"] = "redirect"
-        frappe.local.response["location"] = pr.get_payment_url()
-
-    if args.return_doc:
-        return pr
-
-    return pr.as_dict()
-
-def get_gateway_details(args):  # nosemgrep
-	"""
-	Return gateway and payment account of default payment gateway
-	"""
-	gateway_account = args.get("payment_gateway_account", {"is_default": 1})
-	if gateway_account:
-		return get_payment_gateway_account(gateway_account)
-
-	gateway_account = get_payment_gateway_account({"is_default": 1})
-
-	return gateway_account
-
+	return pr.as_dict()
 
 def get_amount(ref_doc, payment_account=None):
 	"""get amount based on doctype"""

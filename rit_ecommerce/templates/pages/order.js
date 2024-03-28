@@ -81,7 +81,7 @@ pay_partial_button.addEventListener('click', function() {
             alert("Error: Partial amount cannot exceed the total amount.");
             return;
         }
-        window.location.href = '/api/method/rit_ecommerce.custom.make_partial_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&order_type=Shopping Cart&partial_amount=' + encodeURIComponent(partial_amount);
+        window.location.href = '/api/method/rit_ecommerce.custom.make_partial_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&partial_amount=' + encodeURIComponent(partial_amount);
     }
     partial_amount_field.style.display = partial_amount_field.style.display === 'none' ? 'block' : 'none';
     pay_for_order_button.style.display = 'none';
