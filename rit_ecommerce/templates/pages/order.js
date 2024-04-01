@@ -67,22 +67,56 @@ frappe.ready(() => {
 		});
 	}
 })
-
 const partial_amount_field = document.getElementById('partial');
 const pay_partial_button = document.getElementById('pay-partial-amount');
 const pay_for_order_button = document.getElementById('pay-for-order');
+const paymentTypeDropdown = document.getElementById('paymentTypeDropdown');
+const percentageDropdown = document.getElementById('percentageDropdown');
+const display_partial_amount = document.getElementById('partial_amount_display')
+
+paymentTypeDropdown.addEventListener('change', function() {
+    var selectedOption = paymentTypeDropdown.value;
+    if (selectedOption === 'Amount') {
+        partial_amount_field.style.display = 'block';
+        percentageDropdown.style.display = 'none';
+		percentageDropdown.style.display = 'none';
+		display_partial_amount.style.display = 'none';
+    } else if (selectedOption === 'Percentage') {
+        partial_amount_field.style.display = 'none';
+        percentageDropdown.style.display = 'block';
+		display_partial_amount.style.display = 'block';
+		percentageDropdown.addEventListener('change', function() {
+			const selectedPercentage = parseInt(percentageDropdown.value);
+			const payment_amount_text = pay_for_order_button.innerText.trim();
+			const payment_amount = parseFloat(payment_amount_text.replace(/[^0-9.]/g, ''));
+			const partial_amount = (selectedPercentage / 100) * payment_amount;
+		
+			display_partial_amount.innerHTML = 'Partial Amount: ' + partial_amount.toFixed(2);
+		});
+    }
+});
 
 pay_partial_button.addEventListener('click', function() {
-    const partial_amount = parseFloat(partial_amount_field.value);
-	const payment_amount_text = pay_for_order_button.innerText.trim();
-	const payment_amount = parseFloat(payment_amount_text.replace(/[^0-9.]/g, ''));
-	if (partial_amount_field.style.display === 'block') {
+    if (partial_amount_field.style.display === 'block') {
+        const partial_amount = parseFloat(partial_amount_field.value);
+        const payment_amount_text = pay_for_order_button.innerText.trim();
+        const payment_amount = parseFloat(payment_amount_text.replace(/[^0-9.]/g, ''));
+        
         if (partial_amount > payment_amount) {
             alert("Error: Partial amount cannot exceed the total amount.");
             return;
         }
+        
+        window.location.href = '/api/method/rit_ecommerce.custom.make_partial_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&partial_amount=' + encodeURIComponent(partial_amount);
+        
+    } else if (percentageDropdown.style.display === 'block') {
+        const selectedPercentage = parseInt(percentageDropdown.value);
+        const payment_amount_text = pay_for_order_button.innerText.trim();
+        const payment_amount = parseFloat(payment_amount_text.replace(/[^0-9.]/g, ''));
+        const partial_amount = (selectedPercentage / 100) * payment_amount;
         window.location.href = '/api/method/rit_ecommerce.custom.make_partial_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&partial_amount=' + encodeURIComponent(partial_amount);
     }
-    partial_amount_field.style.display = partial_amount_field.style.display === 'none' ? 'block' : 'none';
+    
     pay_for_order_button.style.display = 'none';
 });
+

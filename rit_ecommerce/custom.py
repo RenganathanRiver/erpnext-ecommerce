@@ -31,18 +31,7 @@ def make_payment_request(**args):
 	gateway_account = get_gateway_details(args) or frappe._dict()
 
 	grand_total = get_amount(ref_doc, gateway_account.get("payment_account"))
-	if args.loyalty_points and args.dt == "Sales Order":
-		from erpnext.accounts.doctype.loyalty_program.loyalty_program import validate_loyalty_points
-
-		loyalty_amount = validate_loyalty_points(ref_doc, int(args.loyalty_points))
-		frappe.db.set_value(
-			"Sales Order", args.dn, "loyalty_points", int(args.loyalty_points), update_modified=False
-		)
-		frappe.db.set_value(
-			"Sales Order", args.dn, "loyalty_amount", loyalty_amount, update_modified=False
-		)
-		grand_total = grand_total - loyalty_amount
-
+	
 	bank_account = (
 		get_party_bank_account(args.get("party_type"), args.get("party"))
 		if args.get("party_type")
@@ -53,11 +42,6 @@ def make_payment_request(**args):
 		"Payment Request",
 		{"reference_doctype": args.dt, "reference_name": args.dn, "docstatus": 0},
 	)
-
-	existing_payment_request_amount = get_existing_payment_request_amount(args.dt, args.dn)
-
-	if existing_payment_request_amount:
-		grand_total -= existing_payment_request_amount
 
 	if draft_payment_request:
 		frappe.db.set_value(
@@ -125,7 +109,6 @@ def make_partial_payment_request(**args):
 	ref_doc = frappe.get_doc(args.dt, args.dn)
 	gateway_account = get_gateway_details(args) or frappe._dict()
 
-	grand_total = get_amount(ref_doc, gateway_account.get("payment_account"))
 
 	bank_account = (
 		get_party_bank_account(args.get("party_type"), args.get("party"))
@@ -133,8 +116,7 @@ def make_partial_payment_request(**args):
 		else ""
 	)
 
-	grand_total = float(args.get("partial_amount"))
-
+	partial_amount = float(args.get("partial_amount"))
 	pr = frappe.new_doc("Payment Request")
 	pr.update(
 		{
@@ -144,7 +126,7 @@ def make_partial_payment_request(**args):
 			"payment_channel": gateway_account.get("payment_channel"),
 			"payment_request_type": args.get("payment_request_type"),
 			"currency": ref_doc.currency,
-			"grand_total": grand_total,
+			"grand_total": partial_amount,
 			"mode_of_payment": args.mode_of_payment,
 			"email_to": args.recipient_id or ref_doc.owner,
 			"subject": _("Payment Request for {0}").format(args.dn),
@@ -213,6 +195,23 @@ def get_amount(ref_doc, payment_account=None):
 		frappe.throw(_("Payment Entry is already created"))
 		
 
+def get_existing_paid_payment_request_amount(ref_dt, ref_dn):
+	"""
+	Get the existing payment request amount which are paritially paid
+	"""
+	existing_payment_request_amount = frappe.db.sql(
+		"""
+		select sum(grand_total)
+		from `tabPayment Request`
+		where
+			reference_doctype = %s
+			and reference_name = %s
+			and docstatus = 1
+			and (status = 'Partially Paid')
+	""",
+		(ref_dt, ref_dn),
+	)
+	return flt(existing_payment_request_amount[0][0]) if existing_payment_request_amount else 0
 
 def get_existing_payment_request_amount(ref_dt, ref_dn):
 	"""
