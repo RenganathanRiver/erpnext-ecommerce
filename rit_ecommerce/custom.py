@@ -6,8 +6,6 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 from frappe import _
 from frappe.utils import flt, get_url
 from erpnext.accounts.doctype.payment_request.payment_request import get_gateway_details, _get_payment_gateway_controller, get_dummy_message
-
-
 from erpnext.accounts.doctype.payment_request.payment_request import (
     PaymentRequest as OriginalPaymentRequest,
 )

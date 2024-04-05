@@ -119,7 +119,8 @@ app_license = "mit"
 # }
 
 override_doctype_class = {
-	"Payment Request": "rit_ecommerce.custom.PaymentRequest"
+	"Payment Request": "rit_ecommerce.custom.PaymentRequest",
+    "Braintree Settings": "rit_ecommerce.braintree_settings.BraintreeSettings"
 }
 
 # Document Events
