@@ -118,6 +118,10 @@ app_license = "mit"
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 
+override_doctype_class = {
+	"Payment Request": "rit_ecommerce.custom.PaymentRequest"
+}
+
 # Document Events
 # ---------------
 # Hook on document methods and events
